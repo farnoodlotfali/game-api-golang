@@ -1,0 +1,16 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main.exe ."  # Changed to .exe
+bin = "./tmp/main.exe"                # Changed to .exe
+exclude_dir = ["tmp", "vendor", ".git"]
+include_ext = ["go", "html", "tpl"]
+delay = 1000
+
+[log]
+time = false
+
+[color]
+main = "cyan"
+watcher = "green"
