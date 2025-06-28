@@ -40,6 +40,7 @@ func createTables() {
 	// producers
 	createGameGenreProducers()
 	createGamePlatformProducers()
+	deleteGameProducers()
 
 	// views
 	createGameView()

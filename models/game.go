@@ -3,6 +3,8 @@ package models
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/game-api/db"
@@ -19,9 +21,9 @@ type Game struct {
 }
 type GameCreateDTO struct {
 	Game
-	GenreIds     []int64 `json:"genre_ids"  binding:"required"`
-	PlatformsIds []int64 `json:"platform_ids"  binding:"required"`
-	// Screenshots *[]Screenshot `json:"screenshots"`
+	GenreIds      []int64  `json:"genre_ids"  binding:"required"`
+	PlatformsIds  []int64  `json:"platform_ids"  binding:"required"`
+	ScreenshotIds *[]int64 `json:"screenshot_ids"`
 }
 type GameDTO struct {
 	Game
@@ -31,12 +33,63 @@ type GameDTO struct {
 	Screenshots *[]Screenshot `json:"screenshots"`
 }
 
-func GetAllGames() ([]GameDTO, error) {
-	query := `SELECT * FROM game_full_info`
+func CountGames(q string) (int64, error) {
+	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM game_full_info WHERE title LIKE %s", "'%"+q+"%'")
+	var totalCount int64
+	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return totalCount, nil
+}
+
+func GetAllGames(page, limit, order, q, sort string) (PageResponseType[[]GameDTO], error) {
+
+	total, err := CountGames(q)
+	if err != nil {
+		return PageResponseType[[]GameDTO]{}, err
+	}
+
+	// fmt.Println("Total games count:", total)
+	query := `SELECT * FROM game_full_info WHERE 1=1`
+
+	emptyArr := PageResponseType[[]GameDTO]{}
+
+	// search by title
+	if q != "" {
+		query += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
+	}
+
+	// order and sort
+	if sort != "" {
+		query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
+	}
+
+	intPage, _ := strconv.Atoi(page)
+	intLimit, _ := strconv.Atoi(limit)
+
+	offset := (intPage - 1) * intLimit
+
+	// limit
+	query += fmt.Sprintf(" LIMIT %s", limit)
+
+	// offset
+	query += fmt.Sprintf(" OFFSET %s", fmt.Sprint(offset))
+
+	// lastPage
+	lastPage := int(total) / intLimit
+	if int(total)%intLimit != 0 {
+		lastPage++
+	} else {
+		lastPage = 1
+	}
+
+	// fmt.Println(query)
 
 	rows, err := db.DB.Query(query)
 	if err != nil {
-		return nil, err
+		return emptyArr, err
 	}
 	defer rows.Close()
 
@@ -68,39 +121,40 @@ func GetAllGames() ([]GameDTO, error) {
 		game.CoverImageURL = &full
 
 		if err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 
 		if err := json.Unmarshal(publisherJSON, &game.Publisher); err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 
 		if len(genresJSON) == 0 || string(genresJSON) == "null" {
 			game.Genres = []Genre{}
 		} else if err := json.Unmarshal(genresJSON, &game.Genres); err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 
 		if len(platformsJSON) == 0 || string(platformsJSON) == "null" {
 			game.Platforms = []Platform{}
 		} else if err := json.Unmarshal(platformsJSON, &game.Platforms); err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 
 		if len(screenshotsJSON) == 0 || string(screenshotsJSON) == "null" {
 			game.Screenshots = &[]Screenshot{}
 		} else if err := json.Unmarshal(screenshotsJSON, &game.Screenshots); err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 
 		games = append(games, game)
 	}
 
 	if len(games) == 0 {
-		return []GameDTO{}, nil
+		return SuccessPaginationResponse([]GameDTO{}, total, lastPage, intPage)
 	}
 
-	return games, nil
+	return SuccessPaginationResponse(games, total, lastPage, intPage)
+
 }
 
 func GetGameByID(id int64) (*GameDTO, error) {
@@ -203,6 +257,15 @@ func (g *Game) Update() error {
 		g.ID,
 	)
 
+	return err
+
+}
+
+func (g *Game) Delete() error {
+
+	query := "CALL delete_game($1)"
+
+	_, err := db.DB.Exec(query, g.ID)
 	return err
 
 }

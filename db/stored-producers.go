@@ -43,3 +43,24 @@ func createGamePlatformProducers() {
 	}
 
 }
+
+func deleteGameProducers() {
+	sql := `
+	CREATE OR REPLACE PROCEDURE delete_game(g_id BIGINT)
+	LANGUAGE plpgsql
+	AS $$
+	BEGIN
+		DELETE FROM game_platforms WHERE game_id = g_id;
+		DELETE FROM game_genres WHERE game_id = g_id;
+		DELETE FROM screenshots WHERE game_id = g_id;
+		DELETE FROM games WHERE id = g_id;
+	END;
+	$$;
+	`
+
+	_, err := DB.Exec(sql)
+	if err != nil {
+		panic("Failed to create delete_game procedure: ")
+	}
+
+}

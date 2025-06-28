@@ -10,8 +10,10 @@ func RegisterRoutes(server *gin.Engine) {
 	api.POST("/games", createGame)
 	api.PUT("/games/:id", updateGame)
 	api.GET("/games/:id", getGame)
+	api.DELETE("/games/:id", deleteGame)
 
 	// publishers
+	api.GET("/publishers", getPublishers)
 	api.POST("/publishers", createPublisher)
 
 	// genre
