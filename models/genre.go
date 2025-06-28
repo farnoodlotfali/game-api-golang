@@ -30,6 +30,10 @@ func GetAllGenres() ([]Genre, error) {
 		}
 		genres = append(genres, genre)
 	}
+	if len(genres) == 0 {
+		return []Genre{}, nil
+	}
+
 	return genres, nil
 }
 

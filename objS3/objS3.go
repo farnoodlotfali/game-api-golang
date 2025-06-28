@@ -40,7 +40,7 @@ func InitS3() {
 	S3Client = s3.New(sess)
 }
 
-func UploadFileToS3(fileHeader *multipart.FileHeader, prefix string) (string, error) {
+func UploadFileToS3(fileHeader *multipart.FileHeader, prefix, folder string) (string, error) {
 	file, err := fileHeader.Open()
 	if err != nil {
 		return "", fmt.Errorf("could not open file: %w", err)
@@ -54,7 +54,7 @@ func UploadFileToS3(fileHeader *multipart.FileHeader, prefix string) (string, er
 		return "", err
 	}
 
-	objectKey := prefix + "-" + randomString + "-" + fileHeader.Filename
+	objectKey := folder + prefix + "-" + randomString + "-" + fileHeader.Filename
 
 	// Upload to S3
 	_, err = S3Client.PutObject(&s3.PutObjectInput{
@@ -70,6 +70,30 @@ func UploadFileToS3(fileHeader *multipart.FileHeader, prefix string) (string, er
 
 	url := fmt.Sprintf("/%s", objectKey)
 	return url, nil
+}
+
+func DeleteFileFromS3(objectKey string) error {
+	bucket := os.Getenv("S3_BUCKET")
+
+	_, err := S3Client.DeleteObject(&s3.DeleteObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return fmt.Errorf("S3 DeleteObject failed: %w", err)
+	}
+
+	// Optionally, you might want to wait until the deletion is complete
+	// This is useful if you need to ensure the object is deleted before proceeding
+	err = S3Client.WaitUntilObjectNotExists(&s3.HeadObjectInput{
+		Bucket: aws.String(bucket),
+		Key:    aws.String(objectKey),
+	})
+	if err != nil {
+		return fmt.Errorf("waiting for S3 object deletion failed: %w", err)
+	}
+
+	return nil
 }
 
 func DetectContentType(path string) string {
@@ -88,7 +112,7 @@ func DetectContentType(path string) string {
 func GetS3Endpoint() string {
 	endpoint := os.Getenv("S3_ENDPOINT")
 	if endpoint == "" {
-		return "http://localhost:9000" // Default for local MinIO
+		return "http://localhost:9000"
 	}
 	return endpoint
 }

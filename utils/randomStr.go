@@ -7,7 +7,6 @@ import (
 
 const chars = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
-	"!@#$%^&*" +
 	"0123456789"
 
 func RandomString(n int) (string, error) {
