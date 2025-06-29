@@ -33,8 +33,20 @@ type GameDTO struct {
 	Screenshots *[]Screenshot `json:"screenshots"`
 }
 
-func CountGames(q string) (int64, error) {
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM game_full_info WHERE title LIKE %s", "'%"+q+"%'")
+func CountGames(q, releaseDateFrom, releaseDateTo string) (int64, error) {
+	countQuery := "SELECT COUNT(*) FROM game_full_info WHERE 1=1"
+	if q != "" {
+		countQuery += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
+	}
+
+	if releaseDateFrom != "" {
+		countQuery += fmt.Sprintf(" AND release_date >= '%s'", releaseDateFrom)
+	}
+
+	if releaseDateTo != "" {
+		countQuery += fmt.Sprintf(" AND release_date <= '%s'", releaseDateTo)
+	}
+
 	var totalCount int64
 	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
@@ -44,9 +56,9 @@ func CountGames(q string) (int64, error) {
 	return totalCount, nil
 }
 
-func GetAllGames(page, limit, order, q, sort string) (PageResponseType[[]GameDTO], error) {
+func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo string) (PageResponseType[[]GameDTO], error) {
 
-	total, err := CountGames(q)
+	total, err := CountGames(q, releaseDateFrom, releaseDateTo)
 	if err != nil {
 		return PageResponseType[[]GameDTO]{}, err
 	}
@@ -59,6 +71,14 @@ func GetAllGames(page, limit, order, q, sort string) (PageResponseType[[]GameDTO
 	// search by title
 	if q != "" {
 		query += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
+	}
+
+	if releaseDateFrom != "" {
+		query += fmt.Sprintf(" AND release_date >= '%s'", releaseDateFrom)
+	}
+
+	if releaseDateTo != "" {
+		query += fmt.Sprintf(" AND release_date <= '%s'", releaseDateTo)
 	}
 
 	// order and sort

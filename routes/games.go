@@ -13,15 +13,17 @@ import (
 
 func getGames(ctx *gin.Context) {
 
-	page := ctx.DefaultQuery("page", "1")     // Default to 1 if not provided
-	limit := ctx.DefaultQuery("limit", "10")  // Default to 10 if not provided
-	q := ctx.DefaultQuery("q", "")            // Default sorting by title
-	order := ctx.DefaultQuery("order", "asc") // Default sorting order is ascending
-	sort := ctx.DefaultQuery("sort", "")      // Default sorting order is ascending
+	page := ctx.DefaultQuery("page", "1")                      // Default to 1 if not provided
+	limit := ctx.DefaultQuery("limit", "10")                   // Default to 10 if not provided
+	q := ctx.DefaultQuery("q", "")                             // Default sorting by title
+	order := ctx.DefaultQuery("order", "asc")                  // Default sorting order is ascending
+	sort := ctx.DefaultQuery("sort", "")                       //
+	releaseDateFrom := ctx.DefaultQuery("releaseDateFrom", "") //
+	releaseDateTo := ctx.DefaultQuery("releaseDateTo", "")     //
 
 	fmt.Println("Page:", page, "Limit:", limit, "q:", q, "Order:", order, "sort:", sort)
 
-	games, err := models.GetAllGames(page, limit, order, q, sort)
+	games, err := models.GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo)
 
 	if err != nil {
 		fmt.Print(err)
