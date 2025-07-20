@@ -1,6 +1,11 @@
 package models
 
-import "github.com/game-api/db"
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/game-api/db"
+)
 
 type Genre struct {
 	ID          int64   `json:"id"`
@@ -8,12 +13,65 @@ type Genre struct {
 	Description *string `json:"description"`
 }
 
-func GetAllGenres() ([]Genre, error) {
-	query := `SELECT * FROM genres`
+func CountGenres(q string) (int64, error) {
+	countQuery := "SELECT COUNT(*) FROM genres WHERE 1=1"
+	if q != "" {
+		countQuery += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
+	}
+
+	var totalCount int64
+	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return totalCount, nil
+}
+
+func GetAllGenres(page, limit, order, q, sort string) (PageResponseType[[]Genre], error) {
+
+	total, err := CountGenres(q)
+	if err != nil {
+		return PageResponseType[[]Genre]{}, err
+	}
+
+	query := `SELECT * FROM genres WHERE 1=1`
+
+	emptyArr := PageResponseType[[]Genre]{}
+
+	// search by name
+	if q != "" {
+		query += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
+	}
+
+	// order and sort
+	if sort != "" {
+		query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
+	}
+
+	intPage, _ := strconv.Atoi(page)
+	intLimit, _ := strconv.Atoi(limit)
+
+	offset := (intPage - 1) * intLimit
+
+	// limit
+	query += fmt.Sprintf(" LIMIT %s", limit)
+
+	// offset
+	query += fmt.Sprintf(" OFFSET %s", fmt.Sprint(offset))
+
+	// lastPage
+	lastPage := int(total) / intLimit
+
+	if int(total)%intLimit != 0 {
+		lastPage++
+	} else if lastPage == 0 {
+		lastPage = 1
+	}
 
 	rows, err := db.DB.Query(query)
 	if err != nil {
-		return nil, err
+		return emptyArr, err
 	}
 	defer rows.Close()
 
@@ -26,15 +84,15 @@ func GetAllGenres() ([]Genre, error) {
 			&genre.Description,
 		)
 		if err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 		genres = append(genres, genre)
 	}
 	if len(genres) == 0 {
-		return []Genre{}, nil
+		return SuccessPaginationResponse([]Genre{}, total, lastPage, intPage)
 	}
 
-	return genres, nil
+	return SuccessPaginationResponse(genres, total, lastPage, intPage)
 }
 
 func (g *Genre) Save() error {
@@ -48,4 +106,8 @@ func (g *Genre) Save() error {
 	).Scan(&g.ID)
 
 	return err
+}
+
+func (g *Genre) GetID() int64 {
+	return g.ID
 }
