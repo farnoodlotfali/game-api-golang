@@ -30,14 +30,14 @@ func getPublishers(ctx *gin.Context) {
 func createPublisher(ctx *gin.Context) {
 	// 1) Parse form fields
 	if err := ctx.Request.ParseMultipartForm(32 << 20); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid form", "err": err.Error()})
 		return
 	}
 
 	var publisher models.Publisher
 	publisher.Title = ctx.Request.FormValue("title")
 	publisher.Country = ctx.Request.FormValue("country")
-	publisher.FoundingDate, _ = time.Parse(time.RFC3339, ctx.Request.FormValue("release_date"))
+	publisher.FoundingDate, _ = time.Parse(time.RFC3339, ctx.Request.FormValue("founding_date"))
 	publisher.WebsiteUrl = ctx.Request.FormValue("website_url")
 
 	// 2) Handle  image upload
@@ -51,10 +51,11 @@ func createPublisher(ctx *gin.Context) {
 			return
 		}
 		publisher.ImageUrl = url
-	} else {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "UploadFileToS3 error", "err": err.Error()})
-		return
 	}
+	// else {
+	// 	ctx.JSON(http.StatusInternalServerError, gin.H{"message": "UploadFileToS3 error", "err": err.Error()})
+	// 	return
+	// }
 
 	// 3) Save to database
 	if err := publisher.Save(); err != nil {

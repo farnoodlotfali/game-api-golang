@@ -121,3 +121,6 @@ func (p *Publisher) Save() error {
 
 	return err
 }
+func (g *Publisher) GetID() int64 {
+	return g.ID
+}
