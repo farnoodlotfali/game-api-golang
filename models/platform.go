@@ -1,6 +1,11 @@
 package models
 
-import "github.com/game-api/db"
+import (
+	"fmt"
+	"strconv"
+
+	"github.com/game-api/db"
+)
 
 type Platform struct {
 	ID          int64   `json:"id"`
@@ -8,12 +13,66 @@ type Platform struct {
 	Description *string `json:"description"`
 }
 
-func GetAllPlatforms() ([]Platform, error) {
-	query := `SELECT * FROM platforms`
+func CountPlatforms(q string) (int64, error) {
+	countQuery := "SELECT COUNT(*) FROM platforms WHERE 1=1"
+	if q != "" {
+		countQuery += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
+	}
+
+	var totalCount int64
+	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
+	if err != nil {
+		return 0, err
+	}
+
+	return totalCount, nil
+}
+
+func GetAllPlatforms(page, limit, order, q, sort string) (PageResponseType[[]Platform], error) {
+	emptyArr := PageResponseType[[]Platform]{}
+
+	total, err := CountPlatforms(q)
+	if err != nil {
+		return emptyArr, err
+	}
+
+	query := `SELECT * FROM platforms WHERE 1=1`
+
+	// search by name
+	if q != "" {
+		query += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
+	}
+
+	// order and sort
+	if sort != "" {
+		query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
+	}
+
+	intPage, _ := strconv.Atoi(page)
+	intLimit, _ := strconv.Atoi(limit)
+
+	offset := (intPage - 1) * intLimit
+
+	// limit
+	query += fmt.Sprintf(" LIMIT %s", limit)
+
+	// offset
+	query += fmt.Sprintf(" OFFSET %s", fmt.Sprint(offset))
+
+	// lastPage
+	lastPage := int(total) / intLimit
+
+	if int(total)%intLimit != 0 {
+		lastPage++
+	} else if lastPage == 0 {
+		lastPage = 1
+	}
+
+	fmt.Println(query)
 
 	rows, err := db.DB.Query(query)
 	if err != nil {
-		return nil, err
+		return emptyArr, err
 	}
 	defer rows.Close()
 
@@ -26,11 +85,16 @@ func GetAllPlatforms() ([]Platform, error) {
 			&platform.Description,
 		)
 		if err != nil {
-			return nil, err
+			return emptyArr, err
 		}
 		platforms = append(platforms, platform)
 	}
-	return platforms, nil
+
+	if len(platforms) == 0 {
+		return SuccessPaginationResponse([]Platform{}, total, lastPage, intPage)
+	}
+
+	return SuccessPaginationResponse(platforms, total, lastPage, intPage)
 }
 
 func (p *Platform) Save() error {
@@ -43,4 +107,7 @@ func (p *Platform) Save() error {
 	).Scan(&p.ID)
 
 	return err
+}
+func (g *Platform) GetID() int64 {
+	return g.ID
 }
