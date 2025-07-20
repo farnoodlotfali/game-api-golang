@@ -8,30 +8,46 @@ import (
 
 	"github.com/game-api/models"
 	"github.com/game-api/objS3"
+	"github.com/game-api/utils"
 	"github.com/gin-gonic/gin"
 )
 
 func getGames(ctx *gin.Context) {
+	page := ctx.DefaultQuery("page", "1")
+	limit := ctx.DefaultQuery("limit", "10")
+	q := ctx.DefaultQuery("q", "")
+	order := ctx.DefaultQuery("order", "asc")
+	sort := ctx.DefaultQuery("sort", "")
+	releaseDateFrom := ctx.DefaultQuery("releaseDateFrom", "")
+	releaseDateTo := ctx.DefaultQuery("releaseDateTo", "")
 
-	page := ctx.DefaultQuery("page", "1")                      // Default to 1 if not provided
-	limit := ctx.DefaultQuery("limit", "10")                   // Default to 10 if not provided
-	q := ctx.DefaultQuery("q", "")                             // Default sorting by title
-	order := ctx.DefaultQuery("order", "asc")                  // Default sorting order is ascending
-	sort := ctx.DefaultQuery("sort", "")                       //
-	releaseDateFrom := ctx.DefaultQuery("releaseDateFrom", "") //
-	releaseDateTo := ctx.DefaultQuery("releaseDateTo", "")     //
-
-	fmt.Println("Page:", page, "Limit:", limit, "q:", q, "Order:", order, "sort:", sort)
-
-	games, err := models.GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo)
-
+	genres_ids, err := utils.ExtractIDsFromQuery[*models.Genre](ctx, "genre_id")
 	if err != nil {
-		fmt.Print(err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	platform_ids, err := utils.ExtractIDsFromQuery[*models.Platform](ctx, "platform_id")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	publisher_ids, err := utils.ExtractIDsFromQuery[*models.Publisher](ctx, "publisher_id")
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
+		return
+	}
+
+	games, err := models.GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo, genres_ids, platform_ids, publisher_ids)
+	if err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "Could not fetch!"})
 		return
 	}
+
 	ctx.JSON(http.StatusOK, games)
 }
+
 func getGame(ctx *gin.Context) {
 	gameId, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/game-api/db"
@@ -33,19 +34,8 @@ type GameDTO struct {
 	Screenshots *[]Screenshot `json:"screenshots"`
 }
 
-func CountGames(q, releaseDateFrom, releaseDateTo string) (int64, error) {
-	countQuery := "SELECT COUNT(*) FROM game_full_info WHERE 1=1"
-	if q != "" {
-		countQuery += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
-	}
-
-	if releaseDateFrom != "" {
-		countQuery += fmt.Sprintf(" AND release_date >= '%s'", releaseDateFrom)
-	}
-
-	if releaseDateTo != "" {
-		countQuery += fmt.Sprintf(" AND release_date <= '%s'", releaseDateTo)
-	}
+func CountGames(query string) (int64, error) {
+	countQuery := strings.Replace(query, "SELECT *", "SELECT COUNT(*)", 1)
 
 	var totalCount int64
 	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
@@ -56,14 +46,13 @@ func CountGames(q, releaseDateFrom, releaseDateTo string) (int64, error) {
 	return totalCount, nil
 }
 
-func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo string) (PageResponseType[[]GameDTO], error) {
+func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo string, genre_ids, platform_ids, publisher_ids []int64) (PageResponseType[[]GameDTO], error) {
 
-	total, err := CountGames(q, releaseDateFrom, releaseDateTo)
-	if err != nil {
-		return PageResponseType[[]GameDTO]{}, err
-	}
+	// total, err := CountGames(q, releaseDateFrom, releaseDateTo, genre_ids, platform_ids, publisher_ids)
+	// if err != nil {
+	// 	return PageResponseType[[]GameDTO]{}, err
+	// }
 
-	// fmt.Println("Total games count:", total)
 	query := `SELECT * FROM game_full_info WHERE 1=1`
 
 	emptyArr := PageResponseType[[]GameDTO]{}
@@ -73,12 +62,55 @@ func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo str
 		query += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
 	}
 
+	// search by date
 	if releaseDateFrom != "" {
 		query += fmt.Sprintf(" AND release_date >= '%s'", releaseDateFrom)
 	}
 
+	// search by date
 	if releaseDateTo != "" {
 		query += fmt.Sprintf(" AND release_date <= '%s'", releaseDateTo)
+	}
+
+	// search by publisher
+	if len(publisher_ids) > 0 {
+		publisherConditions := ""
+		for i, pubID := range publisher_ids {
+			if i > 0 {
+				publisherConditions += ", "
+			}
+			publisherConditions += fmt.Sprintf("%d", pubID)
+		}
+		query += fmt.Sprintf(" AND publisher_id IN (%s)", publisherConditions)
+	}
+
+	// search by genre
+	if len(genre_ids) > 0 {
+		genreConditions := ""
+		for i, genreID := range genre_ids {
+			if i > 0 {
+				genreConditions += " OR "
+			}
+			genreConditions += fmt.Sprintf("genres::jsonb @> '[{\"id\": %d}]'::jsonb", genreID)
+		}
+		query += " AND (" + genreConditions + ")"
+	}
+
+	// search by platform
+	if len(platform_ids) > 0 {
+		platformConditions := ""
+		for i, platformID := range platform_ids {
+			if i > 0 {
+				platformConditions += " OR "
+			}
+			platformConditions += fmt.Sprintf("platforms::jsonb @> '[{\"id\": %d}]'::jsonb", platformID)
+		}
+		query += " AND (" + platformConditions + ")"
+	}
+
+	total, err := CountGames(query)
+	if err != nil {
+		return PageResponseType[[]GameDTO]{}, err
 	}
 
 	// order and sort
@@ -101,7 +133,7 @@ func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo str
 	lastPage := int(total) / intLimit
 	if int(total)%intLimit != 0 {
 		lastPage++
-	} else {
+	} else if lastPage == 0 {
 		lastPage = 1
 	}
 
