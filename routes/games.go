@@ -131,7 +131,7 @@ func createGame(ctx *gin.Context) {
 	}
 
 	// 2) Handle cover image upload
-	fileHeader, err := ctx.FormFile("cover_image_url")
+	fileHeader, err := ctx.FormFile("cover_image")
 
 	if err == nil {
 
@@ -140,7 +140,7 @@ func createGame(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to upload to S3", "err": err.Error()})
 			return
 		}
-		dto.CoverImageURL = &url
+		dto.CoverImage = &url
 	} else {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "UploadFileToS3 error", "err": err.Error()})
 		return

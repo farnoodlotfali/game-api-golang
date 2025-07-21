@@ -13,12 +13,12 @@ import (
 )
 
 type Game struct {
-	ID            int64     `json:"id"`
-	Title         string    `json:"title" binding:"required"`
-	ReleaseDate   time.Time `json:"release_date" binding:"required"`
-	CoverImageURL *string   `json:"cover_image_url"`
-	Description   *string   `json:"description"`
-	PublisherID   int64     `json:"publisher_id" binding:"required"`
+	ID          int64     `json:"id"`
+	Title       string    `json:"title" binding:"required"`
+	ReleaseDate time.Time `json:"release_date" binding:"required"`
+	CoverImage  *string   `json:"cover_image"`
+	Description *string   `json:"description"`
+	PublisherID int64     `json:"publisher_id" binding:"required"`
 }
 type GameCreateDTO struct {
 	Game
@@ -169,8 +169,12 @@ func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo str
 			&screenshotsJSON,
 		)
 
-		full := objS3.GetS3Endpoint() + rawCover.String
-		game.CoverImageURL = &full
+		if rawCover.String != "" {
+			full := objS3.GetS3Endpoint() + rawCover.String
+			game.CoverImage = &full
+		} else {
+			game.CoverImage = nil
+		}
 
 		if err != nil {
 			return emptyArr, err
@@ -236,7 +240,7 @@ func GetGameByID(id int64) (*GameDTO, error) {
 	)
 
 	full := objS3.GetS3Endpoint() + rawCover.String
-	game.CoverImageURL = &full
+	game.CoverImage = &full
 
 	if err != nil {
 		return nil, err
@@ -270,13 +274,13 @@ func GetGameByID(id int64) (*GameDTO, error) {
 
 func (g *Game) Save() error {
 
-	query := `INSERT INTO games (title, release_date, cover_image_url, description, publisher_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`
+	query := `INSERT INTO games (title, release_date, cover_image, description, publisher_id) VALUES ($1, $2, $3, $4, $5) RETURNING id`
 
 	err := db.DB.QueryRow(
 		query,
 		g.Title,
 		g.ReleaseDate,
-		g.CoverImageURL,
+		g.CoverImage,
 		g.Description,
 		g.PublisherID,
 	).Scan(&g.ID)
@@ -292,7 +296,7 @@ func (g *Game) Update() error {
     SET 
         title = $1,
         release_date = $2,
-        cover_image_url = $3,
+        cover_image = $3,
         description = $4
         publisher_id = $5
     WHERE 
@@ -303,7 +307,7 @@ func (g *Game) Update() error {
 		query,
 		g.Title,
 		g.ReleaseDate,
-		g.CoverImageURL,
+		g.CoverImage,
 		g.Description,
 		g.PublisherID,
 		g.ID,

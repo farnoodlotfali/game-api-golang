@@ -10,7 +10,7 @@ func createGameView() {
 		g.id AS game_id,
 		g.title,
 		g.release_date,
-		g.cover_image_url,
+		g.cover_image,
 		g.description,
 		g.publisher_id,
 
@@ -20,7 +20,7 @@ func createGameView() {
 			'country', pub.country,
 			'founding_date', TO_CHAR(pub.founding_date AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
 			'website_url', pub.website_url,
-			'image_url', pub.image_url
+			'image', pub.image
 		) AS publisher,
 
 		JSON_AGG(DISTINCT JSONB_BUILD_OBJECT(

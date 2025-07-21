@@ -16,7 +16,7 @@ type Publisher struct {
 	Country      string    `json:"country" binding:"required"`
 	FoundingDate time.Time `json:"founding_date" binding:"required"`
 	WebsiteUrl   string    `json:"website_url"`
-	ImageUrl     string    `json:"image_url"`
+	Image        string    `json:"image"`
 }
 
 func CountPublishers(q string) (int64, error) {
@@ -88,8 +88,12 @@ func GetAllPublishers(page, limit, order, q, sort string) (PageResponseType[[]Pu
 			&rawCover,
 		)
 
-		full := objS3.GetS3Endpoint() + rawCover.String
-		publisher.ImageUrl = full
+		if rawCover.String != "" {
+			full := objS3.GetS3Endpoint() + rawCover.String
+			publisher.Image = full
+		} else {
+			publisher.Image = ""
+		}
 
 		if err != nil {
 			return emptyArr, err
@@ -107,7 +111,7 @@ func GetAllPublishers(page, limit, order, q, sort string) (PageResponseType[[]Pu
 }
 
 func (p *Publisher) Save() error {
-	query := `INSERT INTO publishers (title, country, founding_date, website_url, image_url) VALUES ($1, $2, $3, $4, $5)
+	query := `INSERT INTO publishers (title, country, founding_date, website_url, image) VALUES ($1, $2, $3, $4, $5)
 	RETURNING id`
 
 	err := db.DB.QueryRow(
@@ -116,7 +120,7 @@ func (p *Publisher) Save() error {
 		p.Country,
 		p.FoundingDate,
 		p.WebsiteUrl,
-		p.ImageUrl,
+		p.Image,
 	).Scan(&p.ID)
 
 	return err

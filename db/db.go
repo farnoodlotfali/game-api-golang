@@ -53,7 +53,7 @@ func createGamesTable() {
 		id SERIAL PRIMARY KEY,
 		title VARCHAR(100) NOT NULL,
 		release_date TIMESTAMP NOT NULL,
-		cover_image_url VARCHAR(512),
+		cover_image VARCHAR(512),
 		description VARCHAR(512),
 		publisher_id INTEGER,
 		CONSTRAINT fk_publisher
@@ -78,7 +78,7 @@ func createPublishersTable() {
 		country VARCHAR(30) NOT NULL,
 		founding_date TIMESTAMP NOT NULL,
 		website_url VARCHAR(255),
-		image_url VARCHAR(512)
+		image VARCHAR(512)
 	)
 	`
 	_, err := DB.Exec(query)

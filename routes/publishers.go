@@ -54,7 +54,7 @@ func createPublisher(ctx *gin.Context) {
 	}
 
 	// 2) Handle  image upload
-	fileHeader, err := ctx.FormFile("image_url")
+	fileHeader, err := ctx.FormFile("image")
 	if err == nil {
 		// If a file is uploaded, upload it to S3
 		url, err := objS3.UploadFileToS3(fileHeader, "test", "publishers/")
@@ -62,7 +62,7 @@ func createPublisher(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to upload to S3", "err": err.Error()})
 			return
 		}
-		publisher.ImageUrl = url
+		publisher.Image = url
 	}
 
 	// 3) Save to database
