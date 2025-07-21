@@ -37,14 +37,26 @@ func createPublisher(ctx *gin.Context) {
 	var publisher models.Publisher
 	publisher.Title = ctx.Request.FormValue("title")
 	publisher.Country = ctx.Request.FormValue("country")
-	publisher.FoundingDate, _ = time.Parse(time.RFC3339, ctx.Request.FormValue("founding_date"))
-	publisher.WebsiteUrl = ctx.Request.FormValue("website_url")
+
+	// Handle optional website_url
+	websiteURL := ctx.Request.FormValue("website_url")
+	if websiteURL != "" {
+		publisher.WebsiteUrl = websiteURL
+	}
+
+	date, err := time.Parse(time.RFC3339, ctx.Request.FormValue("founding_date"))
+
+	if err == nil {
+		publisher.FoundingDate = date
+	} else {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "date error", "err": err.Error()})
+		return
+	}
 
 	// 2) Handle  image upload
 	fileHeader, err := ctx.FormFile("image_url")
-
 	if err == nil {
-
+		// If a file is uploaded, upload it to S3
 		url, err := objS3.UploadFileToS3(fileHeader, "test", "publishers/")
 		if err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to upload to S3", "err": err.Error()})
@@ -52,10 +64,6 @@ func createPublisher(ctx *gin.Context) {
 		}
 		publisher.ImageUrl = url
 	}
-	// else {
-	// 	ctx.JSON(http.StatusInternalServerError, gin.H{"message": "UploadFileToS3 error", "err": err.Error()})
-	// 	return
-	// }
 
 	// 3) Save to database
 	if err := publisher.Save(); err != nil {
