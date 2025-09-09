@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/game-api/db"
@@ -19,8 +20,9 @@ type Publisher struct {
 	Image        string    `json:"image"`
 }
 
-func CountPublishers(q string) (int64, error) {
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM publishers WHERE title LIKE %s", "'%"+q+"%'")
+func CountPublishers(query string) (int64, error) {
+	countQuery := strings.Replace(query, "SELECT *", "SELECT COUNT(*)", 1)
+
 	var totalCount int64
 	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
 	if err != nil {
@@ -31,19 +33,19 @@ func CountPublishers(q string) (int64, error) {
 }
 
 func GetAllPublishers(page, limit, order, q, sort string) (PageResponseType[[]Publisher], error) {
-	total, err := CountPublishers(q)
-	if err != nil {
-		return PageResponseType[[]Publisher]{}, err
-	}
 
-	fmt.Println("Total publishers count:", total)
 	query := `SELECT * FROM publishers WHERE 1=1`
 
 	emptyArr := PageResponseType[[]Publisher]{}
 
 	// search by title
 	if q != "" {
-		query += fmt.Sprintf(" AND title LIKE %s", "'%"+q+"%'")
+		query += fmt.Sprintf(" AND title ILIKE %s", "'%"+q+"%'")
+	}
+
+	total, err := CountPublishers(query)
+	if err != nil {
+		return emptyArr, err
 	}
 
 	// order and sort

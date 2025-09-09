@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/game-api/db"
 )
@@ -13,11 +14,8 @@ type Platform struct {
 	Description *string `json:"description"`
 }
 
-func CountPlatforms(q string) (int64, error) {
-	countQuery := "SELECT COUNT(*) FROM platforms WHERE 1=1"
-	if q != "" {
-		countQuery += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
-	}
+func CountPlatforms(query string) (int64, error) {
+	countQuery := strings.Replace(query, "SELECT *", "SELECT COUNT(*)", 1)
 
 	var totalCount int64
 	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
@@ -31,11 +29,6 @@ func CountPlatforms(q string) (int64, error) {
 func GetAllPlatforms(page, limit, order, q, sort string) (PageResponseType[[]Platform], error) {
 	emptyArr := PageResponseType[[]Platform]{}
 
-	total, err := CountPlatforms(q)
-	if err != nil {
-		return emptyArr, err
-	}
-
 	query := `SELECT * FROM platforms WHERE 1=1`
 
 	// search by name
@@ -46,6 +39,11 @@ func GetAllPlatforms(page, limit, order, q, sort string) (PageResponseType[[]Pla
 	// order and sort
 	if sort != "" {
 		query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
+	}
+
+	total, err := CountPlatforms(query)
+	if err != nil {
+		return emptyArr, err
 	}
 
 	intPage, _ := strconv.Atoi(page)

@@ -48,11 +48,6 @@ func CountGames(query string) (int64, error) {
 
 func GetAllGames(page, limit, order, q, sort, releaseDateFrom, releaseDateTo string, genre_ids, platform_ids, publisher_ids []int64) (PageResponseType[[]GameDTO], error) {
 
-	// total, err := CountGames(q, releaseDateFrom, releaseDateTo, genre_ids, platform_ids, publisher_ids)
-	// if err != nil {
-	// 	return PageResponseType[[]GameDTO]{}, err
-	// }
-
 	query := `SELECT * FROM game_full_info WHERE 1=1`
 
 	emptyArr := PageResponseType[[]GameDTO]{}
@@ -238,9 +233,18 @@ func GetGameByID(id int64) (*GameDTO, error) {
 		&platformsJSON,
 		&screenshotsJSON,
 	)
+	if rawCover.String != "" {
+		// full := objS3.GetS3Endpoint() + rawCover.String
+		// game.CoverImage = &full
+		game.CoverImage = &rawCover.String
 
-	full := objS3.GetS3Endpoint() + rawCover.String
-	game.CoverImage = &full
+	} else {
+		full := ""
+		game.CoverImage = &full
+	}
+	// full := objS3.GetS3Endpoint() + rawCover.String
+	// // full := objS3.GetS3Endpoint() + rawCover.String
+	// game.CoverImage = &full
 
 	if err != nil {
 		return nil, err
@@ -290,19 +294,21 @@ func (g *Game) Save() error {
 }
 
 func (g *Game) Update() error {
-
 	query := `
-	UPDATE events 
+    UPDATE games 
     SET 
         title = $1,
         release_date = $2,
         cover_image = $3,
-        description = $4
+        description = $4,
         publisher_id = $5
     WHERE 
         id = $6
-	`
+    `
 
+	// cover := g.CoverImage
+	// url := strings.Replace(*g.CoverImage, objS3.GetS3Endpoint(), "", 1)
+	// g.CoverImage = &url
 	_, err := db.DB.Exec(
 		query,
 		g.Title,
@@ -312,9 +318,8 @@ func (g *Game) Update() error {
 		g.PublisherID,
 		g.ID,
 	)
-
+	// g.CoverImage = cover
 	return err
-
 }
 
 func (g *Game) Delete() error {

@@ -22,6 +22,7 @@ type ResponseType[T any] struct {
 	Data    T      `json:"data"`
 }
 
+// pagination
 func SuccessPaginationResponse[T any](items []T, total int64, lastPage, intPage int) (PageResponseType[[]T], error) {
 	return PageResponseType[[]T]{
 		Message: "nice",
@@ -33,5 +34,13 @@ func SuccessPaginationResponse[T any](items []T, total int64, lastPage, intPage 
 				CurrentPage: intPage,
 			},
 		},
+	}, nil
+}
+
+// normal
+func SuccessResponse[T any](item T) (ResponseType[T], error) {
+	return ResponseType[T]{
+		Message: "nice",
+		Data:    item,
 	}, nil
 }

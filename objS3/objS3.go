@@ -116,3 +116,7 @@ func GetS3Endpoint() string {
 	}
 	return endpoint
 }
+func AddEndPointToUrl(val string) string {
+	full := GetS3Endpoint() + val
+	return full
+}

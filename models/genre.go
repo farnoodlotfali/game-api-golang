@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/game-api/db"
 )
@@ -13,11 +14,8 @@ type Genre struct {
 	Description *string `json:"description"`
 }
 
-func CountGenres(q string) (int64, error) {
-	countQuery := "SELECT COUNT(*) FROM genres WHERE 1=1"
-	if q != "" {
-		countQuery += fmt.Sprintf(" AND name ILIKE %s", "'%"+q+"%'")
-	}
+func CountGenres(query string) (int64, error) {
+	countQuery := strings.Replace(query, "SELECT *", "SELECT COUNT(*)", 1)
 
 	var totalCount int64
 	err := db.DB.QueryRow(countQuery).Scan(&totalCount)
@@ -29,11 +27,6 @@ func CountGenres(q string) (int64, error) {
 }
 
 func GetAllGenres(page, limit, order, q, sort string) (PageResponseType[[]Genre], error) {
-
-	total, err := CountGenres(q)
-	if err != nil {
-		return PageResponseType[[]Genre]{}, err
-	}
 
 	query := `SELECT * FROM genres WHERE 1=1`
 
@@ -47,6 +40,11 @@ func GetAllGenres(page, limit, order, q, sort string) (PageResponseType[[]Genre]
 	// order and sort
 	if sort != "" {
 		query += fmt.Sprintf(" ORDER BY %s %s", sort, order)
+	}
+
+	total, err := CountGenres(query)
+	if err != nil {
+		return emptyArr, err
 	}
 
 	intPage, _ := strconv.Atoi(page)
